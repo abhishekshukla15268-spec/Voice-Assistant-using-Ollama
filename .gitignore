@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python caching
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Project specific
+latency_logs.csv
+Piper-TTS/
+piper
+*.onnx
+*.onnx.json
+
+# OS specific
+.DS_Store
+Thumbs.db
