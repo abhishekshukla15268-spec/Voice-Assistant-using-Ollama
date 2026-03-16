@@ -27,7 +27,7 @@ A modular, high-performance voice assistant designed for low latency and local-f
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/abhishekshukla15268-spec/Voice-Assistant-using-Ollama.git
-   cd local_voice_assistant
+   cd Voice-Assistant-using-Ollama
    ```
 
 2. **Set up Virtual Environment**:
