@@ -15,8 +15,7 @@ __pycache__/
 latency_logs.csv
 Piper-TTS/
 piper
-*.onnx
-*.onnx.json
+
 
 # OS specific
 .DS_Store
