@@ -224,52 +224,67 @@ class VoiceAssistantPipeline:
         """Synthesizes text using Piper TTS subprocess for high-fidelity audio."""
         model_path = os.path.abspath("assets/en_US-lessac-low.onnx")
         
-        # Piper outputs raw 16-bit 16kHz PCM audio
-        piper_cmd = ["piper", "--model", model_path, "--output_raw"]
+        # Phase 3: Robust Piper binary discovery
+        # Try local venv first, then system PATH
+        venv_piper = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "venv", "bin", "piper"))
+        piper_binary = venv_piper if os.path.exists(venv_piper) else "piper"
+        
+        piper_cmd = [piper_binary, "--model", model_path, "--output_raw"]
         
         while self.is_running:
             sentence = await self.tts_queue.get()
             print(f"[Debug] TTS received text: {sentence}")
             
-            # 1. Start Piper subprocess
-            process = await asyncio.create_subprocess_exec(
-                *piper_cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL
-            )
-            
-            if process.stdin is None or process.stdout is None:
-                print("[TTS Error] Piper subprocess failed to open pipes.")
-                continue
-            
-            # 2. Feed the sentence into Piper and close stdin
-            process.stdin.write((sentence + "\n").encode('utf-8'))
-            await process.stdin.drain()
-            process.stdin.close()
-            
-            first_byte_recorded = False
-            chunk_size = 4096 # ~0.12 seconds of audio
-            
-            print(f"[Assistant]: {sentence}")
-            
-            # 3. Stream the raw audio directly to sounddevice
-            # Using RawOutputStream since piper gives us raw PCM bytes
-            stream = sd.RawOutputStream(samplerate=16000, channels=1, dtype='int16')
-            with stream:
-                while True:
-                    data = await process.stdout.read(chunk_size)
-                    if not data:
-                        break
-                    
-                    if not first_byte_recorded:
-                        self.metrics.record_tts_first_byte()
-                        first_byte_recorded = True
+            try:
+                # 1. Start Piper subprocess
+                process = await asyncio.create_subprocess_exec(
+                    *piper_cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE # Capture stderr for better debugging
+                )
+                
+                if process.stdin is None or process.stdout is None:
+                    print("[TTS Error] Piper subprocess failed to open pipes.")
+                    continue
+                
+                # 2. Feed the sentence into Piper and close stdin
+                process.stdin.write((sentence + "\n").encode('utf-8'))
+                await process.stdin.drain()
+                process.stdin.close()
+                
+                first_byte_recorded = False
+                chunk_size = 4096 # ~0.12 seconds of audio
+                
+                print(f"[Assistant]: {sentence}")
+                
+                # 3. Stream the raw audio directly to sounddevice
+                # Using RawOutputStream since piper gives us raw PCM bytes
+                stream = sd.RawOutputStream(samplerate=16000, channels=1, dtype='int16')
+                with stream:
+                    while True:
+                        data = await process.stdout.read(chunk_size)
+                        if not data:
+                            break
                         
-                    # Write audio chunk to speakers (runs in thread to avoid blocking loop)
-                    await asyncio.to_thread(stream.write, data)
-            
-            await process.wait()
+                        if not first_byte_recorded:
+                            self.metrics.record_tts_first_byte()
+                            first_byte_recorded = True
+                            
+                        # Write audio chunk to speakers (runs in thread to avoid blocking loop)
+                        await asyncio.to_thread(stream.write, data)
+                
+                # Check for errors on exit
+                _, stderr = await process.communicate()
+                if process.returncode != 0:
+                    print(f"[TTS Error] Piper exited with code {process.returncode}: {stderr.decode().strip()}")
+
+            except FileNotFoundError:
+                print(f"[TTS Error] Piper binary not found at '{piper_binary}'. Please ensure piper-tts is installed.")
+                await self.play_fallback_audio("assets/fallback_error.wav")
+            except Exception as e:
+                print(f"[TTS Error] Unexpected error in TTS pipeline: {e}")
+                await self.play_fallback_audio("assets/fallback_error.wav")
 
     def audio_callback(self, indata, frames, time, status):
         if status: print(status)
