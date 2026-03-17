@@ -4,7 +4,8 @@ A modular, high-performance voice assistant designed for low latency and local-f
 
 ## 🚀 Features
 
-- **Dual-Mode LLM Support**: Switch between high-performance Google Gemini Flash via API or fully local inference using **Ollama** (`gemma:2b`).
+- **Dual-Mode LLM Support**: Switch between high-performance Google Gemini Flash via API or fully local inference using **Ollama** (supports `gemma:2b` and `llama3.2:1b`).
+- **Interactive Model Selection**: Automatically prompts for your preferred local model when running in local mode.
 - **High-Fidelity ASR**: Powered by `faster-whisper` (OpenAI Whisper) for accurate, real-time transcription.
 - **Natural-Sounding TTS**: Uses **Piper** for high-quality, streaming speech synthesis.
 - **Robust Voice Activity Detection (VAD)**: Custom dual-threshold logic to handle background noise and low mic sensitivity on laptops.
@@ -17,7 +18,11 @@ A modular, high-performance voice assistant designed for low latency and local-f
 
 1. **Python 3.10+**: Recommended environment.
 2. **Ollama** (Optional): Only required for local LLM mode. [Download here](https://ollama.com/).
-   - Pull the default model: `ollama pull gemma:2b`
+   - Pull the models: 
+     ```bash
+     ollama pull gemma:2b
+     ollama pull llama3.2:1b
+     ```
 3. **Piper TTS**: The assistant expects `piper` to be available in your path or virtual environment.
 
 ---
@@ -56,7 +61,11 @@ python3 main.py
 ### 2. Local Mode (Ollama)
 Runs the entire LLM chain locally using Ollama. No API key required.
 ```bash
-python3 main.py --local --model gemma:2b
+# Interactive mode (prompts for model choice)
+python3 main.py --local
+
+# Direct model selection (skips prompt)
+python3 main.py --local --model llama3.2:1b
 ```
 
 ### 3. Replay Mode (Debugging)

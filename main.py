@@ -19,7 +19,18 @@ def main():
     
     # Defaults
     if not args.model:
-        model_name = 'gemma:2b' if args.local else 'gemini-3-flash-preview'
+        if args.local:
+            print("\nSelect Local LLM Model:")
+            print("1. gemma:2b")
+            print("2. llama3.2:1b")
+            choice = input("Enter choice (1 or 2, default 1): ").strip()
+            
+            if choice == '2':
+                model_name = 'llama3.2:1b'
+            else:
+                model_name = 'gemma:2b'
+        else:
+            model_name = 'gemini-3-flash-preview'
     else:
         model_name = args.model
 
